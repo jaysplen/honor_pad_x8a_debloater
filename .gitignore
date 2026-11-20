@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+/.venv/
+/.agents/
+/.aws/
+/.codex/
+.env
+.env.*
+adbkey
+adbkey.pub
+/recovery/
+scan_*.json
+transaction_*.json
