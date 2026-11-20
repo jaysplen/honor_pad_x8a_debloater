@@ -27,8 +27,11 @@ class FakeDevice:
         self.settings = {pkg: 0 for pkg in self.active} | {pkg: 3 for pkg in self.disabled}
         self.writes = []
 
-    def require_writable(self):
+    def require_supported(self):
         assert d.recognized_device(self.properties)
+
+    def require_writable(self):
+        self.require_supported()
 
     def packages(self, *switches, package=None):
         if '-e' in switches:
@@ -78,6 +81,34 @@ class IntegrationTests(unittest.TestCase):
     def apply_with_confirmation(self, items):
         with patch('builtins.input', return_value=f'DISABLE {len(items)}'), contextlib.redirect_stdout(io.StringIO()):
             return d.do_apply(self.device, items, 'safe')
+
+    def test_eu_previews_use_the_installed_packages_for_each_build(self):
+        tips = "com.hihonor.tips"
+        unknown = "com.hihonor.regionalpreload"
+        for model, market, has_tips in (
+            ("NDL-W09", 'HONOR Pad X8a 11"-WiFi', False),
+            ("NDL-L09", 'HONOR Pad X8a 11"-LTE', True),
+        ):
+            with self.subTest(model=model):
+                device = FakeDevice(self.directory / model)
+                device.properties.update({
+                    "ro.product.model": model, "ro.product.marketname": market,
+                    "ro.build.display.id": f"{model} simulated build",
+                })
+                if not has_tips:
+                    device.active.remove(tips)
+                    device.system.remove(tips)
+                device.active.add(unknown)
+                device.system.add(unknown)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    items, _ = d.cmd_plan(device, "safe")
+                self.assertEqual([item.package for item in items], [tips] if has_tips else [])
+                self.assertFalse(device.writes)
+                snapshot, = device.recovery_dir.glob("scan_*.json")
+                saved = json.loads(snapshot.read_text(encoding="utf-8"))
+                self.assertTrue(saved["recognized_x8a"])
+                self.assertEqual(saved["device"]["ro.build.display.id"], f"{model} simulated build")
+                self.assertIn(unknown, saved["unreviewed_vendor_packages"])
 
     def test_apply_restore_preserves_already_disabled_apps(self):
         items, _ = d.selection(self.device.inventory(), 'safe')

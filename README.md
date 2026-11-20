@@ -110,7 +110,13 @@ Install Python 3.9+ and macOS Platform-Tools, connect and authorize the tablet, 
 
 ## What can change on the tablet
 
-The write path requires a live USB connection to an exact supported model code with an HONOR manufacturer property. A reported marketing name must agree with Pad X8a. Supported identifiers are **NDL-W09** (Wi-Fi) and **NDL-L09 / NDL-L03** (LTE). Other identities can run `scan`. The scan records the current Android version and firmware fingerprint so you can identify the build being reviewed.
+The write path requires a live USB connection to an exact supported model code with an HONOR manufacturer property. A reported marketing name must agree with Pad X8a. Supported identifiers are **NDL-W09** (Wi-Fi) and **NDL-L09 / NDL-L03** (LTE). Other identities can run `scan`. The scan records the current Android version, build identifier, and fingerprint.
+
+### EU models and firmware
+
+HONOR's European documentation lists **NDL-W09** for the Pad X8a Wi-Fi and **NDL-L09** for the Pad X8a LTE. Use **Settings > About tablet** to check the code. The tool accepts these codes and HONOR's 11-inch naming variants when the reported name agrees with the model. Models such as **NDL2-W09** and **NDL2-L09** are listed as the Pad X8b in Google's device catalog and are eligible for read-only scans. [HONOR EU Wi-Fi product sheet](https://www.honor.com/content/dam/honor/common/energy/product-information-sheet/german/HONOR%20Pad%20X8a_de.pdf), [HONOR EU Wi-Fi and LTE reports](https://www.honor.com/de/accessibility/), [Google Play device list](https://storage.googleapis.com/play_public/supported_devices.html)
+
+Use the same scan and conservative preview on EU firmware. The tool builds the plan from the tablet's live package inventory, so the result can vary by build. A plan with zero changes is valid if HONOR Tips is absent, disabled, or ineligible. EU coverage is based on model documentation and simulated inventories. Physical EU firmware testing is pending.
 
 | Selection | Scope | Expected effect |
 | --- | --- | --- |

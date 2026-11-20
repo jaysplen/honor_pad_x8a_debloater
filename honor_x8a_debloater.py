@@ -21,10 +21,13 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 BASE = Path(__file__).resolve().parent
 DATA_DIR = BASE / "recovery"
 SUPPORTED_MODELS = {"NDL-W09", "NDL-L09", "NDL-L03"}
+MARKET_NAME_RE = re.compile(
+    r'honor pad x8a(?: 11(?:\.0)?(?:["“”″]| inch))?(?:(?: | ?- ?)(?:wi-?fi(?: only)?|lte))?'
+)
 PENDING = {"disabled", "attempted", "unverified"}
 RESTORE_COMMANDS = {0: "default-state", 1: "enable", "enabled": "enable"}
 JOURNAL_SCHEMA = 1
@@ -146,9 +149,10 @@ def parse_packages(stdout: str) -> set[str]:
 def recognized_device(properties: dict[str, str]) -> bool:
     model = properties.get("ro.product.model", "").strip().upper()
     maker = properties.get("ro.product.manufacturer", "").strip().casefold()
-    market = properties.get("ro.product.marketname", "").strip().casefold()
-    return (model in SUPPORTED_MODELS and maker == "honor"
-            and market in {"", "honor pad x8a", "honor pad x8a wi-fi", "honor pad x8a lte"})
+    if model not in SUPPORTED_MODELS or maker != "honor":
+        return False
+    market = " ".join(properties.get("ro.product.marketname", "").casefold().split())
+    return not market or MARKET_NAME_RE.fullmatch(market) is not None
 
 
 def in_wsl() -> bool:
@@ -282,7 +286,7 @@ class Device:
         self.properties = {key: self.shell("getprop", key) for key in
                            ("ro.product.model", "ro.product.marketname", "ro.product.name",
                             "ro.build.version.release", "ro.build.version.sdk", "ro.product.manufacturer",
-                            "ro.build.fingerprint")}
+                            "ro.build.display.id", "ro.build.fingerprint")}
         self.device_key = hashlib.sha256(self.serial.encode()).hexdigest()[:16]
 
     def list_connections(self) -> list[Connection]:

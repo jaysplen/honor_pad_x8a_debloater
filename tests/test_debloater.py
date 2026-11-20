@@ -15,11 +15,27 @@ class DebloatTests(unittest.TestCase):
         props = {"ro.product.manufacturer": "HONOR", "ro.product.marketname": "HONOR Pad X8a"}
         for model in ("NDL-W09", "NDL-L09", "NDL-L03"):
             self.assertTrue(d.recognized_device({**props, "ro.product.model": model}))
-        for model in ("NDL2-L09", "HEY-W09", "Pixel 9", "HONOR Pad X8a clone"):
+        for model in ("NDL2-W09", "NDL2-L09", "ELN-W09", "HEY-W09", "Pixel 9", "HONOR Pad X8a clone"):
             self.assertFalse(d.recognized_device({**props, "ro.product.model": model}))
         props["ro.product.model"] = "NDL-W09"
         self.assertFalse(d.recognized_device({**props, "ro.product.marketname": "HONOR Pad X9"}))
         self.assertFalse(d.recognized_device({**props, "ro.product.manufacturer": ""}))
+
+    def test_recognizes_european_x8a_marketing_names(self):
+        for model, market in (
+            ("NDL-W09", 'HONOR Pad X8a 11"-WiFi'),
+            ("NDL-W09", "Honor Pad X8a  11.0 inch Wi-Fi Only"),
+            ("NDL-L09", "HONOR Pad X8a 11” - LTE"),
+            ("NDL-L09", ""),
+        ):
+            with self.subTest(model=model, market=market):
+                self.assertTrue(d.recognized_device({
+                    "ro.product.model": model, "ro.product.manufacturer": "Honor", "ro.product.marketname": market,
+                }))
+        self.assertFalse(d.recognized_device({
+            "ro.product.model": "NDL-W09", "ro.product.manufacturer": "Honor",
+            "ro.product.marketname": 'HONOR Pad X8b 11"-WiFi',
+        }))
 
     def test_parse_package_output_without_command_injection(self):
         result = d.parse_packages("package:com.hihonor.tips\npackage:com.hihonor.tips;rm -rf /\n"
