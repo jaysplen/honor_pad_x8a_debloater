@@ -76,9 +76,28 @@ class DebloatTests(unittest.TestCase):
             self.assertEqual(d.adb_base(), "/usr/bin/adb")
 
     def test_native_linux_uses_adb(self):
-        with patch.object(d, "in_wsl", return_value=False), patch.object(d.shutil, "which", return_value="/usr/bin/adb") as which:
+        with patch.object(d.sys, "platform", "linux"), patch.object(d, "in_wsl", return_value=False), \
+                patch.object(d.shutil, "which", return_value="/usr/bin/adb") as which:
             self.assertEqual(d.adb_base(), "/usr/bin/adb")
             which.assert_called_once_with("adb")
+
+    def test_windows_prefers_local_platform_tools_and_honors_override(self):
+        local_adb = str(d.BASE / "platform-tools" / "adb.exe")
+        executables = {local_adb: local_adb, "adb.exe": "PATH adb", "override.exe": "override adb"}
+        with patch.object(d.sys, "platform", "win32"), patch.object(d.shutil, "which", side_effect=executables.get):
+            self.assertEqual(d.adb_base(), local_adb)
+            self.assertEqual(d.adb_base("override.exe"), "override adb")
+
+    def test_windows_finds_android_sdk_without_path(self):
+        sdk_dir = Path("Android SDK")
+        sdk_adb = str(sdk_dir / "platform-tools" / "adb.exe")
+        standard_adb = str(Path("Local AppData") / "Android" / "Sdk" / "platform-tools" / "adb.exe")
+        locations = {"ANDROID_HOME": str(sdk_dir), "LOCALAPPDATA": "Local AppData"}
+        with patch.dict(d.os.environ, locations, clear=True), patch.object(d.sys, "platform", "win32"), \
+                patch.object(d.shutil, "which", side_effect={sdk_adb: sdk_adb, standard_adb: standard_adb}.get):
+            self.assertEqual(d.adb_base(), sdk_adb)
+            del d.os.environ["ANDROID_HOME"]
+            self.assertEqual(d.adb_base(), standard_adb)
 
     def test_linux_usb_permission_error_points_to_setup(self):
         listing = "List of devices attached\nX8A no permissions (udev rules missing); usb:1-2 transport_id:5\n"

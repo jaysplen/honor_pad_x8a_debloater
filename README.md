@@ -2,9 +2,33 @@
 
 A Python tool that inventories a USB-connected HONOR Pad X8a and optionally disables selected preinstalled apps for the tablet owner (Android user 0). It uses Android's package manager to change an app's enabled setting. The system image, bootloader and app data stay in place. Every tablet change requires a typed confirmation and a local recovery journal.
 
-For a first run, download and extract the source ZIP from [GitHub Releases](https://github.com/jaysplen/honor_pad_x8a_debloater/releases), then follow the setup for [WSL](#run-from-wsl-over-usb), [Linux Mint, Ubuntu or Debian](#boot-linux-mint-22-from-usb), or [Windows and macOS](#native-windows-and-macos). Python 3.9+ and ADB are the only runtime requirements.
+For a first run, download and extract the source ZIP from [GitHub Releases](https://github.com/jaysplen/honor_pad_x8a_debloater/releases), then follow the setup for [Windows 11](#windows-11-native), [WSL](#run-from-wsl-over-usb), [Linux Mint, Ubuntu or Debian](#boot-linux-mint-22-from-usb), or [macOS](#macos). Python 3.9+ and ADB are the only runtime requirements.
 
 **Status.** The tests simulate ADB and package states. Real Pad X8a hardware and regional MagicOS builds still need field validation. Start with the read-only scan and preview.
+
+## Windows 11 (native)
+
+1. Install [Python for Windows](https://www.python.org/downloads/windows/). The launcher accepts Python 3.9 or newer through the `py` launcher or the `python` command.
+2. Download and extract [Android SDK Platform-Tools for Windows](https://developer.android.com/tools/releases/platform-tools). Place the entire extracted `platform-tools` folder beside `Start_Windows.bat`. The tool also checks the Android SDK locations and Windows PATH.
+3. Enable **USB debugging** in the tablet's Developer options. Connect the unlocked tablet with a USB data cable and accept the computer's RSA fingerprint. If the first ADB command below triggers the prompt, run it again after accepting. The tablet should be listed as `device`.
+4. Double-click `Start_Windows.bat` for the menu, or run these commands from the project directory in PowerShell. If you installed ADB on PATH, use `adb.exe devices -l` for the first command.
+
+   ```powershell
+   .\platform-tools\adb.exe devices -l
+   .\Start_Windows.bat scan
+   .\Start_Windows.bat plan --profile safe
+   ```
+
+If ADB shows `unauthorized`, unlock the tablet and accept the prompt. If the list is empty, check the USB cable and Windows Device Manager for the tablet's ADB interface. If Windows needs a driver, follow the manufacturer's USB driver guidance. Detach the tablet from WSL if it is currently attached there through `usbipd`. [Android OEM USB drivers](https://developer.android.com/studio/run/oem-usb)
+
+For Windows 11 on Arm, use a working Windows ADB setup and an Arm64-compatible USB driver if one is needed. Windows 11 can emulate x64 applications, while kernel drivers run on the host architecture. [Microsoft's Windows on Arm guide](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation)
+
+You can point to a standalone ADB installation or choose where to keep recovery journals. Put global options before the command:
+
+```powershell
+.\Start_Windows.bat --adb "C:\Android SDK\platform-tools\adb.exe" scan
+.\Start_Windows.bat --recovery-dir "D:\X8a recovery" restore --last
+```
 
 ## Run from WSL over USB
 
@@ -80,9 +104,9 @@ SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="vvvv", ATTR{idPro
 
 Run `sudo udevadm control --reload-rules`, unplug and reconnect the tablet, then retry `adb devices -l`. If the tablet is absent even from `lsusb`, try a different USB data cable or port.
 
-### Native Windows and macOS
+## macOS
 
-On Windows, install Python 3.9+ and Windows Platform-Tools, then double-click `Start_Windows.bat` or run `py -3 honor_x8a_debloater.py`. On macOS, install Python 3.9+ and macOS Platform-Tools and run `./start_macos_linux.sh`. ADB must list an authorized device before you launch the tool. The script uses only the Python standard library.
+Install Python 3.9+ and macOS Platform-Tools, connect and authorize the tablet, then run `./start_macos_linux.sh`. The script uses only the Python standard library.
 
 ## What can change on the tablet
 
@@ -101,7 +125,7 @@ For a first run, choose **1 (Scan)** and **2 (Preview conservative)**. If HONOR 
 
 ## Commands
 
-The WSL and macOS/Linux launcher also accepts commands directly:
+Pass the same commands to `.\Start_Windows.bat` in PowerShell or to `./start_macos_linux.sh` in WSL, macOS, or Linux:
 
 ```sh
 ./start_macos_linux.sh scan
@@ -142,3 +166,7 @@ python3 -m unittest discover -s tests -v
 ```
 
 To report a problem, include the tool version (`--version`), host OS, tablet model and firmware build, and the exact error with any serial numbers removed. Keep full package inventories and recovery journals private. [GitHub Issues](https://github.com/jaysplen/honor_pad_x8a_debloater/issues/new)
+
+## License
+
+The project is available under the [MIT License](LICENSE).

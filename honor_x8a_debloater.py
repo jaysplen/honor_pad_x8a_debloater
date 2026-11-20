@@ -21,7 +21,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 BASE = Path(__file__).resolve().parent
 DATA_DIR = BASE / "recovery"
 SUPPORTED_MODELS = {"NDL-W09", "NDL-L09", "NDL-L03"}
@@ -157,11 +157,26 @@ def in_wsl() -> bool:
     )
 
 
+def windows_adb_candidates() -> list[str]:
+    sdk_dirs = [BASE]
+    for variable in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        if value := os.environ.get(variable):
+            sdk_dirs.append(Path(value))
+    if local_appdata := os.environ.get("LOCALAPPDATA"):
+        sdk_dirs.append(Path(local_appdata) / "Android" / "Sdk")
+    return [str(directory / "platform-tools" / "adb.exe") for directory in sdk_dirs] + ["adb.exe"]
+
+
 def adb_base(override: str | None = None) -> str:
     wsl = in_wsl()
-    candidates = ["adb.exe", "adb"] if wsl else ["adb"]
     if override:
         candidates = [override]
+    elif wsl:
+        candidates = ["adb.exe", "adb"]
+    elif sys.platform == "win32":
+        candidates = windows_adb_candidates()
+    else:
+        candidates = ["adb"]
     for candidate in candidates:
         path = shutil.which(candidate)
         if path:
@@ -174,6 +189,9 @@ def adb_base(override: str | None = None) -> str:
     if sys.platform == "linux":
         raise RuntimeError("ADB not found. Install Linux adb and the Android USB rules for your distribution. "
                            "See the Linux USB setup in README.md.")
+    if sys.platform == "win32":
+        raise RuntimeError("ADB not found. Extract the official Windows platform-tools folder beside this "
+                           "script, add it to PATH, or pass --adb with the full path to adb.exe.")
     raise RuntimeError("ADB not found. Install Android SDK Platform-Tools and add adb to PATH.")
 
 
@@ -251,6 +269,8 @@ class Device:
                     "to WSL 2 with usbipd and pass --adb adb.") if in_wsl() else ""
             if sys.platform == "linux" and any(c.state == "no permissions" for c in listing):
                 hint += " Check the Linux USB permissions setup in README.md."
+            if sys.platform == "win32" and not listing:
+                hint += " Check the USB data cable and Windows Device Manager. See the Windows 11 setup in README.md."
             raise RuntimeError(f"Expected one authorized tablet using {self.adb}. ADB sees {states}. "
                                "Unlock the tablet and accept the USB debugging prompt. Use --serial "
                                f"to select among multiple devices.{hint}")

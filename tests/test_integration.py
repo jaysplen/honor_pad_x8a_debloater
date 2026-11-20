@@ -2,7 +2,9 @@
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -173,6 +175,30 @@ class IntegrationTests(unittest.TestCase):
             self.assertTrue(d.restore(self.device, last=True))
         self.assertEqual(self.device.settings[pkg], 2)
         self.assertEqual(self.device.writes, [(pkg, 'disable-user')])
+
+@unittest.skipUnless(sys.platform == "win32", "Requires Windows cmd.exe")
+class WindowsLauncherTests(unittest.TestCase):
+    def test_launcher_forwards_arguments_and_exit_code_from_a_path_with_spaces(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            project = work / "HONOR Pad X8a"
+            project.mkdir()
+            launcher = project / "Start_Windows.bat"
+            shutil.copyfile(d.BASE / launcher.name, launcher)
+            shutil.copyfile(d.BASE / "honor_x8a_debloater.py", project / "honor_x8a_debloater.py")
+            command = [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/c", "call", str(launcher)]
+            options = {"cwd": work, "stdin": subprocess.DEVNULL, "capture_output": True, "text": True, "timeout": 30}
+
+            version = subprocess.run([*command, "--version"], **options)
+            self.assertEqual(version.returncode, 0, version.stderr)
+            self.assertEqual(version.stdout.strip(), f"honor_x8a_debloater.py {d.VERSION}")
+
+            missing_adb = project / "missing adb.exe"
+            scan = subprocess.run([*command, "--adb", str(missing_adb), "scan"], **options)
+            self.assertEqual(scan.returncode, 1, scan.stderr)
+            self.assertIn("ADB executable not found", scan.stderr)
+            self.assertIn(missing_adb.name, scan.stderr)
+
 
 if __name__ == '__main__':
     unittest.main()
